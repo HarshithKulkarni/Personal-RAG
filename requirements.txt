@@ -1,0 +1,35 @@
+# Django and DRF
+Django>=4.2
+djangorestframework>=3.14
+
+# Database and Vector Store
+psycopg2_binary>=2.9  # PostgreSQL adapter
+pgvector>=0.2  # PostgreSQL extension for vector storage
+
+# Asynchronous Processing
+celery>=5.3
+redis>=5.0  # For Celery backend
+
+# LLM & RAG (LangChain + Ollama)
+langchain>=0.1.19
+ollama>=0.1.14  # Ollama client to run Llama 3.1 8B locally
+pgvector[psycopg]>=0.2  # pgvector for Postgres
+sentence-transformers>=2.2.2  # Alternative embedding model (backup)
+langchain-google-genai
+
+# PDF/Text Processing
+pdfplumber
+pymupdf>=1.22  # PDF extraction (alternative: pdfplumber)
+python-docx>=0.8.11  # DOCX text extraction
+
+# Development & Utilities
+gunicorn>=21.2  # Production WSGI server
+uvicorn[standard]>=0.22  # For running DRF with ASGI
+python-dotenv>=1.0  # For environment variable management
+pre-commit>=3.3  # Code linting and formatting hooks
+
+# Testing
+pytest>=7.4
+pytest-django>=4.5
+pytest-asyncio>=0.21
+factory_boy>=3.3  # Test data generation
