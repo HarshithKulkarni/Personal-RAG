@@ -10,17 +10,13 @@ from .utils import re_rank_contexts
 from langchain_huggingface import HuggingFaceEmbeddings
 import pdfplumber
 from django.db.models.expressions import RawSQL
-from langchain.llms import Ollama
-# from langchain.vectorstores.pgvector import PGVector
+from langchain_community.llms import Ollama
 from langchain_community.vectorstores import PGVector
 from langchain.chains import RetrievalQA
-from rag_app import settings
+from rag_app.settings import USE_RE_RANKING
 from langchain_google_genai import ChatGoogleGenerativeAI
-from dotenv import load_dotenv
 from langchain.schema import HumanMessage
 
-
-load_dotenv()
 
 class DocumentIngestionView(APIView):
     parser_classes = (MultiPartParser, FormParser)
@@ -76,13 +72,9 @@ class DocumentIngestionView(APIView):
 
 
 class QnAView(APIView):
-    def post(self, request, format=None):
+    def post(self, request):
         query = request.data.get('query')
-        # Optional: a category parameter to filter documents
-        if('title' in request.data):
-            title = request.data.get('title')
-        else:
-            title = None
+        title = request.data.get('title',"")
 
         if not query:
             return Response({"error": "Query is required"}, status=status.HTTP_400_BAD_REQUEST)
@@ -96,7 +88,7 @@ class QnAView(APIView):
         # Filter embeddings by category if provided.
         qs = DocumentEmbedding.objects.all()
 
-        if title:
+        if title!="":
             qs = qs.filter(document__title__icontains=title)
 
         # Compute distances using pgvector's <-> operator
@@ -107,12 +99,15 @@ class QnAView(APIView):
         # Gather context from the most relevant documents.
         contexts = [emb.document.content for emb in relevant_embeddings]
 
-        # context_text = "\n\n".join(contexts)
+        if(USE_RE_RANKING):
+            # Re-rank the contexts using the LLM scoring.
+            reranked_contexts = re_rank_contexts(query, contexts)[:3]
+            context_text = "\n\n".join(reranked_contexts)
 
-        # Re-rank the contexts using the LLM scoring.
-        reranked_contexts = re_rank_contexts(query, contexts)[:3]
-        context_text = "\n\n".join(reranked_contexts)
-        
+        else:
+            context_text = "\n\n".join(contexts)
+
+
         prompt = (
             "You are an expert assistant. Using only the context provided below, answer the query precisely. "
             "If the context does not contain enough information, respond with 'I do not have enough information to answer this question.'\n\n"
@@ -120,7 +115,6 @@ class QnAView(APIView):
             f"Query: {query}\n\n"
             "Answer:"
         )
-
 
         # Instantiate the LLM (using Google Gemini Flash in this case).
         llm = ChatGoogleGenerativeAI(
@@ -138,3 +132,27 @@ class QnAView(APIView):
             "title": title,
             "answer": answer
         }, status=status.HTTP_200_OK)
+
+
+
+
+class DocumentSelectionView(APIView):
+    def post(self, request, format=None):
+        """ Allows a user to select documents by title and redirects to QnAView with the query """
+        title = request.data.get("title", "").strip()
+        query = request.data.get("query", "").strip()
+
+        if not title:
+            return Response({"error": "Document title is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not query:
+            return Response({"error": "Query is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Filter documents by title (case-insensitive partial match)
+        documents = Document.objects.filter(title__icontains=title)
+
+        if not documents.exists():
+            return Response({"error": f"No documents found matching '{title}'"}, status=status.HTTP_404_NOT_FOUND)
+
+        qna_view = QnAView.as_view()
+        return qna_view(request._request)
