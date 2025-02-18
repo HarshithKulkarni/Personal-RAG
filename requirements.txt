@@ -1,6 +1,7 @@
 # Django and DRF
 Django>=4.2
 djangorestframework>=3.14
+django-environ
 
 # Database and Vector Store
 psycopg2_binary>=2.9  # PostgreSQL adapter
@@ -27,9 +28,3 @@ gunicorn>=21.2  # Production WSGI server
 uvicorn[standard]>=0.22  # For running DRF with ASGI
 python-dotenv>=1.0  # For environment variable management
 pre-commit>=3.3  # Code linting and formatting hooks
-
-# Testing
-pytest>=7.4
-pytest-django>=4.5
-pytest-asyncio>=0.21
-factory_boy>=3.3  # Test data generation
