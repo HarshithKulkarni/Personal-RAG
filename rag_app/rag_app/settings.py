@@ -95,6 +95,12 @@ DATABASES = {
     }
 }
 
+# Tell Django to not recreate the database
+DATABASES['default']['TEST'] = {
+    'NAME': 'test_rag_db',
+    'MIRROR': 'default'
+}
+
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
